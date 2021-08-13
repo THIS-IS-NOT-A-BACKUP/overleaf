@@ -1,5 +1,4 @@
 const async = require('async')
-const _ = require('underscore')
 const { callbackify } = require('util')
 const { ObjectId } = require('mongodb')
 const Settings = require('@overleaf/settings')
@@ -55,29 +54,19 @@ async function _checkUsersFeatures(userIds) {
     nonProUserIds: [],
   }
 
-  await new Promise((resolve, reject) => {
-    async.eachLimit(
-      users,
-      ASYNC_LIMIT,
-      (user, callback) => {
-        const hasProFeaturesOrBetter = FeaturesUpdater.isFeatureSetBetter(
-          user.features,
-          Settings.features.professional
-        )
-
-        if (hasProFeaturesOrBetter) {
-          result.proUserIds.push(user._id)
-        } else {
-          result.nonProUserIds.push(user._id)
-        }
-        callback()
-      },
-      error => {
-        if (error) return reject(error)
-        resolve()
-      }
+  users.forEach(user => {
+    const hasProFeaturesOrBetter = FeaturesUpdater.isFeatureSetBetter(
+      user.features,
+      Settings.features.professional
     )
+
+    if (hasProFeaturesOrBetter) {
+      result.proUserIds.push(user._id)
+    } else {
+      result.nonProUserIds.push(user._id)
+    }
   })
+
   return result
 }
 
@@ -199,11 +188,10 @@ const InstitutionsManager = {
       [
         cb => fetchInstitutionAndAffiliations(institutionId, cb),
         function (institution, affiliations, cb) {
-          affiliations = _.map(affiliations, function (affiliation) {
+          for (const affiliation of affiliations) {
             affiliation.institutionName = institution.name
             affiliation.institutionId = institutionId
-            return affiliation
-          })
+          }
           async.eachLimit(affiliations, ASYNC_LIMIT, refreshFunction, err =>
             cb(err)
           )
